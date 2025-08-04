@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function LevelProgress() {
   const [xp, setXp] = useState(0);
   const [level, setLevel] = useState(1);
   const [prevLevel, setPrevLevel] = useState(1);
+  const [isLevelingUp, setIsLevelingUp] = useState(false);
+  const [displayProgress, setDisplayProgress] = useState(0);
 
   const handleAdd25 = () => {
     updateXP(25);
@@ -26,16 +28,42 @@ export default function LevelProgress() {
       newLevel--;
     }
 
-    setPrevLevel(prev => prev !== newLevel ? prev : prevLevel);
-    setLevel(newLevel);
-    setXp(newXp < 0 ? 0 : newXp);
+    // Перевіряємо, чи відбувається підвищення рівня
+    if (newLevel > level) {
+      setIsLevelingUp(true);
+      // Спочатку анімуємо до 100%
+      setDisplayProgress(100);
+      
+      // Через 1 секунду скидаємо до 0% і оновлюємо рівень
+      setTimeout(() => {
+        setDisplayProgress(0);
+        setPrevLevel(level);
+        setLevel(newLevel);
+        setXp(newXp < 0 ? 0 : newXp);
+        setIsLevelingUp(false);
+      }, 1000);
+    } else {
+      // Якщо рівень не змінюється, просто оновлюємо XP
+      setPrevLevel(prev => prev !== newLevel ? prev : prevLevel);
+      setLevel(newLevel);
+      setXp(newXp < 0 ? 0 : newXp);
+    }
   };
+
+  // Оновлюємо відображуваний прогрес, коли XP змінюється
+  useEffect(() => {
+    if (!isLevelingUp) {
+      const totalXPForCurrentLevel = (level - 1) * 100;
+      const xpCurrentLevel = xp - totalXPForCurrentLevel;
+      const progressPercent = (xpCurrentLevel / 100) * 100;
+      setDisplayProgress(progressPercent);
+    }
+  }, [xp, level, isLevelingUp]);
 
   const totalXPForCurrentLevel = (level - 1) * 100;
   const totalXPForNextLevel = level * 100;
   const xpCurrentLevel = xp - totalXPForCurrentLevel;
   const xpToNext = totalXPForNextLevel - xp;
-  const progressPercent = (xpCurrentLevel / 100) * 100;
 
   const getStars = (level) => {
     if (level >= 10) return '⭐⭐⭐';
@@ -63,8 +91,11 @@ export default function LevelProgress() {
 
           <div className="w-full h-6 bg-gray-700 rounded-full overflow-hidden mb-2">
             <motion.div
-              animate={{ width: `${progressPercent}%` }}
-              transition={{ duration: 0.8, ease: 'easeInOut' }}
+              animate={{ width: `${displayProgress}%` }}
+              transition={{ 
+                duration: isLevelingUp ? 0.3 : 0.8, 
+                ease: 'easeInOut' 
+              }}
               className="h-full bg-yellow-400"
             />
           </div>
